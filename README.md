@@ -18,8 +18,10 @@ Requires Node.js 24 or newer.
 Run setup and pick how you want to connect:
 
 ```sh
-npx grokdex setup
+pnpm dlx grokdex setup
 ```
+
+`npx grokdex setup` works too.
 
 It signs you in, lets you choose models, and adds them to `~/.grok/config.toml`. Then start Grok with one of them:
 
@@ -31,14 +33,14 @@ Or switch with `/model` in any session.
 
 ## Commands
 
-| Command                       | Description                                   |
-| ----------------------------- | --------------------------------------------- |
-| `grokdex setup`               | Connect a provider and add its models to Grok |
-| `grokdex status`              | Show what is connected                        |
-| `grokdex remove`              | Remove grokdex from Grok's config             |
-| `grokdex remove --sign-out`   | Also sign out and delete saved credentials    |
+| Command                     | Description                                   |
+| --------------------------- | --------------------------------------------- |
+| `grokdex setup`             | Connect a provider and add its models to Grok |
+| `grokdex status`            | Show what is connected                        |
+| `grokdex remove`            | Remove grokdex from Grok's config             |
+| `grokdex remove --sign-out` | Also sign out and delete saved credentials    |
 
-To update, run `npx grokdex@latest setup`.
+To update, run `pnpm dlx grokdex@latest setup` again.
 
 ## How it works
 
@@ -63,11 +65,11 @@ The adapter never stores your credentials. Grok's token passes straight through.
 
 ## Configuration
 
-| Variable             | Default        | Description                             |
-| -------------------- | -------------- | --------------------------------------- |
-| `GROKDEX_SIDE_MODEL` | `gpt-6-luna`   | Model for Grok's titles and recaps      |
-| `GROKDEX_HOME`       | see above      | Where credentials are stored            |
-| `GROK_HOME`          | `~/.grok`      | Grok's config directory                 |
+| Variable             | Default      | Description                        |
+| -------------------- | ------------ | ---------------------------------- |
+| `GROKDEX_SIDE_MODEL` | `gpt-6-luna` | Model for Grok's titles and recaps |
+| `GROKDEX_HOME`       | see above    | Where credentials are stored       |
+| `GROK_HOME`          | `~/.grok`    | Grok's config directory            |
 
 Grok's next-prompt suggestions use Grok's own model. To use GPT for those too, add
 `prompt_suggestion = "gpt-6-luna"` under `[models]` in your Grok config.
@@ -79,11 +81,11 @@ fail with `subscription_sharing_usage_limit_exceeded` once your plan's limit is 
 
 ## Development
 
-| Command                 | Description             |
-| ----------------------- | ----------------------- |
-| `pnpm check`            | Typecheck and run tests |
-| `pnpm build`            | Compile to `dist`       |
-| `node src/cli.ts setup` | Run setup from source   |
+| Command                 | Description                          |
+| ----------------------- | ------------------------------------ |
+| `pnpm check`            | Typecheck, lint and check formatting |
+| `pnpm build`            | Compile to `dist`                    |
+| `node src/cli.ts setup` | Run setup from source                |
 
 ## License
 

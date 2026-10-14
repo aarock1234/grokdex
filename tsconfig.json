@@ -1,16 +1,22 @@
 {
-  "compilerOptions": {
-    "strict": true,
-    "noUncheckedIndexedAccess": true,
-    "noEmit": true,
-    "target": "esnext",
-    "lib": ["esnext"],
-    "module": "nodenext",
-    "allowImportingTsExtensions": true,
-    "rewriteRelativeImportExtensions": true,
-    "erasableSyntaxOnly": true,
-    "verbatimModuleSyntax": true,
-    "types": ["node"]
-  },
-  "include": ["src", "test"]
+	"$schema": "https://json.schemastore.org/tsconfig",
+	"compilerOptions": {
+		"target": "ES2024",
+		"lib": ["ES2024"],
+		"module": "NodeNext",
+		"moduleResolution": "NodeNext",
+		"strict": true,
+		"noEmit": true,
+		"noUncheckedIndexedAccess": true,
+		"noImplicitOverride": true,
+		"verbatimModuleSyntax": true,
+		"isolatedModules": true,
+		"erasableSyntaxOnly": true,
+		"allowImportingTsExtensions": true,
+		"rewriteRelativeImportExtensions": true,
+		"resolveJsonModule": true,
+		"skipLibCheck": true,
+		"types": ["node"]
+	},
+	"include": ["src/**/*.ts", "eslint.config.ts"]
 }
