@@ -1,7 +1,7 @@
 // reasoning items carry encrypted content that only the provider that produced them can read. after
 // a mid-session switch from a grok model, grok replays xai's reasoning to openai, which rejects the
-// whole request. withoutForeignReasoning drops those items up front; RejectedReasoning is the safety
-// net that learns from openai's rejection if one ever gets through.
+// whole request. adaptForeignReasoning rewrites those items up front, keeping their readable thinking;
+// RejectedReasoning is the safety net that learns from openai's rejection if one ever gets through.
 
 import { z } from 'zod';
 
@@ -61,10 +61,41 @@ export class RejectedReasoning {
 	}
 }
 
-// drops reasoning openai could not have produced. an item without encrypted content is dropped too:
-// with store false openai has nothing to look it up by.
-export function withoutForeignReasoning(request: ResponsesRequest): ResponsesRequest {
-	return withoutReasoning(request, item => !isOpenAiEncryptedContent(item.encrypted_content));
+// rewrites reasoning openai could not have produced. its encrypted part is unreadable to openai, and a
+// reasoning item without one is ignored, so the readable thinking becomes an assistant message in the
+// same place, which the model does take into account. an item with no readable thinking is dropped.
+export function adaptForeignReasoning(request: ResponsesRequest): ResponsesRequest {
+	if (!Array.isArray(request.input)) {
+		return request;
+	}
+
+	return {
+		...request,
+		input: request.input.flatMap(item => (isForeignReasoning(item) ? thinkingAsMessage(item) : [item])),
+	};
+}
+
+function isForeignReasoning(item: InputItem): boolean {
+	return item.type === 'reasoning' && !isOpenAiEncryptedContent(item.encrypted_content);
+}
+
+function thinkingAsMessage(item: InputItem): InputItem[] {
+	const thinking = (item.summary ?? [])
+		.map(part => part.text ?? '')
+		.filter(Boolean)
+		.join('\n\n');
+
+	if (!thinking) {
+		return [];
+	}
+
+	return [
+		{
+			type: 'message',
+			role: 'assistant',
+			content: thinking,
+		},
+	];
 }
 
 export function withoutAllReasoning(request: ResponsesRequest): ResponsesRequest {

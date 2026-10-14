@@ -67,6 +67,8 @@ The ChatGPT plan route differs from the regular API in a few ways Grok doesn't h
 - The route ends each stream with an empty `output`, which Grok reads as no answer. The adapter fills it in.
 - The route only reuses its prompt cache when a request carries a `session-id` header. The adapter sends Grok's
   session id, so after the first few turns about 99% of each request is cached, including after `grok -c`.
+- Switching from a Grok model to GPT mid-session replays Grok's reasoning, which OpenAI can't decrypt. The adapter
+  passes Grok's visible thinking to GPT as text and drops only the encrypted part, so GPT keeps the context.
 
 The adapter never stores your credentials. Grok's token passes straight through. It logs one line per request,
 with token counts but no content, to `adapter.log` next to your credentials. Credentials live in
