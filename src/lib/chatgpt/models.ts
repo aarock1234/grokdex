@@ -1,5 +1,7 @@
 import { z } from 'zod';
+import { setTimeout as delay } from 'node:timers/promises';
 
+import { HttpError } from '../errors.ts';
 import { requestJson } from '../http.ts';
 import { API_BASE } from '../openai/api.ts';
 
@@ -46,14 +48,33 @@ type CatalogModel = z.infer<typeof catalogSchema>['models'][number];
 
 // lists the models the signed-in plan offers; hidden catalog entries are skipped.
 export async function listPlanModels(token: string, signal?: AbortSignal): Promise<PlanModel[]> {
-	const { models } = await requestJson(catalogSchema, `${API_BASE}/models`, {
-		headers: {
-			authorization: `Bearer ${token}`,
-		},
-		signal,
-	});
+	// Catalog reads are safe to retry. A temporary gateway failure (including Cloudflare 520)
+	// should not force the user to restart sign-in or replace their account's real catalog.
+	for (let attempt = 0; ; attempt++) {
+		try {
+			const { models } = await requestJson(catalogSchema, `${API_BASE}/models`, {
+				headers: {
+					authorization: `Bearer ${token}`,
+					accept: 'application/json',
+				},
+				signal,
+			});
 
-	return models.filter(model => model.visibility === 'list').map(toPlanModel);
+			return models.filter(model => model.visibility === 'list').map(toPlanModel);
+		} catch (error) {
+			if (!(error instanceof HttpError) || error.status < 500 || error.status > 599) {
+				throw error;
+			}
+			if (attempt >= 3) {
+				throw new HttpError(
+					error.status,
+					'The plan model catalog is temporarily unavailable after 4 attempts. Try grokdex setup again shortly.'
+				);
+			}
+
+			await delay(500 * 2 ** attempt, undefined, { signal });
+		}
+	}
 }
 
 function toPlanModel(model: CatalogModel): PlanModel {

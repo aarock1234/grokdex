@@ -136,19 +136,24 @@ async function connectChatGpt(signal: AbortSignal): Promise<Model[] | undefined>
 
 	spinner.start("Loading your plan's models");
 
-	const token = await accessToken({
-		isHeadless: false,
-		signal,
-	});
-	const planModels = await listPlanModels(token.access_token, signal);
-	const models = planModels.map(model => ({
-		...model,
-		efforts: model.efforts.filter(effort => isGrokEffort(effort.id)),
-	}));
+	try {
+		const token = await accessToken({
+			isHeadless: false,
+			signal,
+		});
+		const planModels = await listPlanModels(token.access_token, signal);
+		const models = planModels.map(model => ({
+			...model,
+			efforts: model.efforts.filter(effort => isGrokEffort(effort.id)),
+		}));
 
-	spinner.stop(`Found ${models.length} models`);
+		spinner.stop(`Found ${models.length} models`);
 
-	return models;
+		return models;
+	} catch (error) {
+		spinner.stop("Could not load your plan's models");
+		throw error;
+	}
 }
 
 type SignInWithSpinnerOptions = {
