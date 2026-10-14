@@ -24,6 +24,7 @@ const inputItemSchema = z.looseObject({
 	type: z.string().optional(),
 	id: z.string().optional(),
 	role: z.string().optional(),
+	encrypted_content: z.string().optional(),
 });
 
 // grok's request is forwarded untouched apart from the fields adaptRequest rewrites.

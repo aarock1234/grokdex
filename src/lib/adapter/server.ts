@@ -13,7 +13,7 @@ import { listen, readBody, sendJson } from '../http.ts';
 import { parseJsonOrUndefined } from '../json.ts';
 import { API_BASE } from '../openai/api.ts';
 import { ADAPTER_PORT } from './address.ts';
-import { RejectedReasoning, Rejection, withoutAllReasoning } from './reasoning.ts';
+import { RejectedReasoning, Rejection, withoutAllReasoning, withoutForeignReasoning } from './reasoning.ts';
 import { adaptRequest, responsesRequestSchema } from './request.ts';
 import type { ResponsesRequest } from './request.ts';
 import { responseStream } from './stream.ts';
@@ -97,7 +97,8 @@ async function proxy(req: IncomingMessage, res: ServerResponse, context: ProxyCo
 		return;
 	}
 
-	const request = context.rejectedReasoning.strip(adaptRequest(parsed.data, context.sideModel));
+	const adapted = adaptRequest(parsed.data, context.sideModel);
+	const request = context.rejectedReasoning.strip(withoutForeignReasoning(adapted));
 	const log = context.logger.child({
 		model: request.model,
 		session: request.prompt_cache_key,
