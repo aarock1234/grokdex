@@ -6,6 +6,8 @@ import { z } from 'zod';
 const envSchema = z.object({
 	GROKDEX_HOME: z.string().min(1).optional(),
 	GROKDEX_SIDE_MODEL: z.string().min(1).default('gpt-6-luna'),
+	GROKDEX_OPENAI_BASE_URL: z.url().default('https://api.openai.com/v1'),
+	GROKDEX_ADAPTER_PORT: z.coerce.number().int().min(1).max(65_535).default(18_456),
 	GROK_HOME: z.string().min(1).optional(),
 	// grok sets this to 1 for a silent token refresh
 	GROK_AUTH_EXPIRED: z

@@ -4,7 +4,7 @@
 import { z } from 'zod';
 
 import { NotSignedInError, SignInError } from '../errors.ts';
-import { API_BASE } from '../openai/api.ts';
+import { OAUTH_RESOURCE } from '../openai/api.ts';
 import { requestJson, requestOk } from '../http.ts';
 import { readStored, removeStored, writeStored } from '../store.ts';
 
@@ -97,7 +97,7 @@ export async function refreshCredentials(credentials: Credentials, signal?: Abor
 			grant_type: 'refresh_token',
 			client_id: credentials.clientId,
 			refresh_token: credentials.refreshToken,
-			resource: API_BASE,
+			resource: OAUTH_RESOURCE,
 		},
 		signal
 	);

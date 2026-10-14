@@ -9,7 +9,7 @@ import { SignInError } from '../errors.ts';
 import { listen } from '../http.ts';
 import { readStored, writeStored } from '../store.ts';
 import { verifyIdToken } from './id-token.ts';
-import { API_BASE } from '../openai/api.ts';
+import { OAUTH_RESOURCE } from '../openai/api.ts';
 import { ISSUER, readCredentials, requestTokens, saveCredentials } from './tokens.ts';
 import type { Credentials } from './tokens.ts';
 
@@ -93,7 +93,7 @@ export async function signIn(options: SignInOptions): Promise<Credentials> {
 				code: result.code,
 				code_verifier: pkce.verifier,
 				redirect_uri: redirectUri,
-				resource: API_BASE,
+				resource: OAUTH_RESOURCE,
 			},
 			options.signal
 		);
@@ -204,7 +204,7 @@ function buildAuthorizeUrl(params: AuthorizeParams): string {
 		response_type: 'code',
 		redirect_uri: params.redirectUri,
 		scope: SCOPES,
-		resource: API_BASE,
+		resource: OAUTH_RESOURCE,
 		state: params.state,
 		nonce: params.nonce,
 		code_challenge: params.challenge,
