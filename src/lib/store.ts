@@ -23,9 +23,13 @@ export function readStored<Schema extends z.ZodType>(name: string, schema: Schem
 		return undefined;
 	}
 
-	const data: unknown = JSON.parse(readFileSync(file, 'utf8'));
+	try {
+		const data: unknown = JSON.parse(readFileSync(file, 'utf8'));
 
-	return schema.parse(data);
+		return schema.parse(data);
+	} catch (error) {
+		throw new Error(`${file} is unreadable; fix or delete it and run grokdex setup`, { cause: error });
+	}
 }
 
 // writes through a temporary file so a crash never leaves a half-written credential behind.

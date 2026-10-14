@@ -15,7 +15,7 @@ export async function mcp(version: string, signal: AbortSignal): Promise<void> {
 	const claiming = claimPort(server, logger, combined);
 
 	try {
-		await serveMcp(version);
+		await serveMcp(version, signal);
 	} finally {
 		stop.abort();
 		server.closeAllConnections();

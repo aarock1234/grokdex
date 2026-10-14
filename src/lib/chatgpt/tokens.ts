@@ -4,11 +4,11 @@
 import { z } from 'zod';
 
 import { NotSignedInError, SignInError } from '../errors.ts';
+import { API_BASE } from '../openai/api.ts';
 import { requestJson, requestOk } from '../http.ts';
 import { readStored, removeStored, writeStored } from '../store.ts';
 
 export const ISSUER = 'https://auth.openai.com';
-export const API_BASE = 'https://api.openai.com/v1';
 
 const TOKEN_URL = `${ISSUER}/api/accounts/oauth/token`;
 const PLAN_SCOPE = 'chatgpt.tokens.use.direct';

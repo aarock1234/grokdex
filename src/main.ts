@@ -102,8 +102,8 @@ async function run(signal: AbortSignal): Promise<void> {
 
 const controller = new AbortController();
 
-process.on('SIGINT', () => controller.abort());
-process.on('SIGTERM', () => controller.abort());
+process.once('SIGINT', () => controller.abort());
+process.once('SIGTERM', () => controller.abort());
 
 run(controller.signal).catch((error: unknown) => {
 	console.error(error instanceof AppError ? error.message : `error: ${errorMessage(error)}`);

@@ -1,4 +1,4 @@
-import { NotSignedInError, errorMessage } from '../errors.ts';
+import { HttpError, NotSignedInError } from '../errors.ts';
 import { withLock } from '../lock.ts';
 import { signIn } from './sign-in.ts';
 import { nowSeconds, readCredentials, refreshCredentials } from './tokens.ts';
@@ -48,10 +48,18 @@ async function currentCredentials(options: AccessTokenOptions): Promise<Credenti
 		try {
 			return await refreshCredentials(credentials, options.signal);
 		} catch (error) {
-			console.error(`token refresh failed: ${errorMessage(error)}`);
-			return undefined;
+			// only a rejected grant means signing in again; cancellation and network failures propagate
+			if (isRejectedGrant(error)) {
+				return undefined;
+			}
+
+			throw error;
 		}
 	});
+}
+
+function isRejectedGrant(error: unknown): boolean {
+	return error instanceof HttpError && (error.status === 400 || error.status === 401);
 }
 
 function shouldRefresh(credentials: Credentials, isHeadless: boolean): boolean {

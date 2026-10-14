@@ -7,7 +7,11 @@ const envSchema = z.object({
 	GROKDEX_HOME: z.string().min(1).optional(),
 	GROKDEX_SIDE_MODEL: z.string().min(1).default('gpt-6-luna'),
 	GROK_HOME: z.string().min(1).optional(),
-	GROK_AUTH_EXPIRED: z.string().optional(),
+	// grok sets this to 1 for a silent token refresh
+	GROK_AUTH_EXPIRED: z
+		.string()
+		.optional()
+		.transform(value => value === '1'),
 	LOCALAPPDATA: z.string().min(1).optional(),
 	XDG_CONFIG_HOME: z.string().min(1).optional(),
 	npm_config_user_agent: z.string().optional(),

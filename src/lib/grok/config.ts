@@ -29,7 +29,8 @@ export function renderBlock(setups: readonly Setup[], launcher: Launcher): strin
 
 export function upsertBlock(config: string, block: string): string {
 	if (BLOCK_PATTERN.test(config)) {
-		return config.replace(BLOCK_PATTERN, `\n\n${block}\n`);
+		// a replacer function, so `$` sequences in catalog text are never treated as patterns
+		return config.replace(BLOCK_PATTERN, () => `\n\n${block}\n`);
 	}
 
 	if (!config.trim()) {
@@ -40,7 +41,7 @@ export function upsertBlock(config: string, block: string): string {
 }
 
 export function removeBlock(config: string): string {
-	return config.replace(BLOCK_PATTERN, '\n');
+	return config.replace(BLOCK_PATTERN, () => '\n');
 }
 
 // rewrites grok's config atomically and keeps the previous version as config.toml.bak.
@@ -106,6 +107,8 @@ function renderModel(setup: Setup, model: Model, providerName: string): string[]
 	return lines;
 }
 
+// the reasoning efforts grok's responses backend can send, with their picker labels. catalogs also
+// list ultra, which is not an api value: codex sends max for it and adds client-side delegation.
 const EFFORT_LABELS: Readonly<Record<string, string>> = {
 	none: 'None',
 	minimal: 'Minimal',
@@ -115,6 +118,10 @@ const EFFORT_LABELS: Readonly<Record<string, string>> = {
 	xhigh: 'Extra high',
 	max: 'Max',
 };
+
+export function isGrokEffort(id: string): boolean {
+	return Object.hasOwn(EFFORT_LABELS, id);
+}
 
 function renderEffort(effort: Model['efforts'][number], model: Model): string {
 	const fields = [

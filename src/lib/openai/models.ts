@@ -1,8 +1,8 @@
 import { z } from 'zod';
 
-import { API_BASE } from '../chatgpt/tokens.ts';
 import { AppError, HttpError } from '../errors.ts';
 import { requestJson } from '../http.ts';
+import { API_BASE } from './api.ts';
 
 const modelListSchema = z.object({
 	data: z.array(

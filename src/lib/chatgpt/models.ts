@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 import { requestJson } from '../http.ts';
-import { API_BASE } from './tokens.ts';
+import { API_BASE } from '../openai/api.ts';
 
 const catalogSchema = z.object({
 	models: z.array(

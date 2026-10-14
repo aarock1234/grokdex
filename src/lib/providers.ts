@@ -1,5 +1,5 @@
 import { ADAPTER_BASE_URL } from './adapter/address.ts';
-import { API_BASE } from './chatgpt/tokens.ts';
+import { API_BASE } from './openai/api.ts';
 
 export const Provider = {
 	CHATGPT: 'chatgpt',

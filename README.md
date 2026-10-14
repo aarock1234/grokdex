@@ -90,11 +90,11 @@ OpenAI's plan route is in preview:
 
 ## Development
 
-| Command                 | Description                          |
-| ----------------------- | ------------------------------------ |
-| `pnpm check`            | Typecheck, lint and check formatting |
-| `pnpm build`            | Compile to `dist`                    |
-| `node src/cli.ts setup` | Run setup from source                |
+| Command                  | Description                          |
+| ------------------------ | ------------------------------------ |
+| `pnpm check`             | Typecheck, lint and check formatting |
+| `pnpm build`             | Compile to `dist`                    |
+| `node src/main.ts setup` | Run setup from source                |
 
 ## License
 

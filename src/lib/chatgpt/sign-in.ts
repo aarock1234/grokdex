@@ -9,7 +9,8 @@ import { SignInError } from '../errors.ts';
 import { listen } from '../http.ts';
 import { readStored, writeStored } from '../store.ts';
 import { verifyIdToken } from './id-token.ts';
-import { API_BASE, ISSUER, readCredentials, requestTokens, saveCredentials } from './tokens.ts';
+import { API_BASE } from '../openai/api.ts';
+import { ISSUER, readCredentials, requestTokens, saveCredentials } from './tokens.ts';
 import type { Credentials } from './tokens.ts';
 
 const AUTHORIZE_URL = `${ISSUER}/api/accounts/authorize`;
@@ -238,6 +239,9 @@ function resolveClientId(saved: string | undefined, returned: string | undefined
 }
 
 async function waitFor<T>(promise: Promise<T>, signal: AbortSignal | undefined): Promise<T> {
+	// an abort that already happened fires no event, so check it before listening
+	signal?.throwIfAborted();
+
 	const deadline = AbortSignal.timeout(SIGN_IN_TIMEOUT_MS);
 	const combined = signal ? AbortSignal.any([signal, deadline]) : deadline;
 	const aborted = Promise.withResolvers<never>();

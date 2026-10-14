@@ -26,7 +26,7 @@ async function tokenFor(provider: Provider, signal: AbortSignal): Promise<Access
 	switch (provider) {
 		case Provider.CHATGPT:
 			return accessToken({
-				isHeadless: env.GROK_AUTH_EXPIRED === '1',
+				isHeadless: env.GROK_AUTH_EXPIRED,
 				signal,
 			});
 		case Provider.OPENAI:

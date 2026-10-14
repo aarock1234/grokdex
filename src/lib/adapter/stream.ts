@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+import { parseJsonOrUndefined } from '../json.ts';
+
 const usageSchema = z.object({
 	input_tokens: z.number(),
 	output_tokens: z.number(),
@@ -38,9 +40,11 @@ export type ResponseStreamOptions = {
 	onUsage: (usage: Usage) => void;
 };
 
+// everything one stream remembers between chunks.
 type StreamState = {
+	buffer: string;
 	items: unknown[];
-	options: ResponseStreamOptions;
+	onUsage: ResponseStreamOptions['onUsage'];
 };
 
 const TERMINAL_EVENTS = new Set(['response.completed', 'response.incomplete']);
@@ -48,26 +52,27 @@ const TERMINAL_EVENTS = new Set(['response.completed', 'response.incomplete']);
 // passes the plan route's sse stream through to grok, fixing its terminal output and reporting usage.
 export function responseStream(options: ResponseStreamOptions): TransformStream<string, string> {
 	const state: StreamState = {
+		buffer: '',
 		items: [],
-		options,
+		onUsage: options.onUsage,
 	};
-	let buffer = '';
 
 	return new TransformStream({
 		transform(chunk, controller) {
-			buffer += chunk.replaceAll('\r\n', '\n');
+			// normalize after joining, so a \r\n split across chunks still becomes \n
+			state.buffer = `${state.buffer}${chunk}`.replaceAll('\r\n', '\n');
 
-			let end = buffer.indexOf('\n\n');
+			let end = state.buffer.indexOf('\n\n');
 
 			while (end !== -1) {
-				controller.enqueue(`${processBlock(buffer.slice(0, end), state)}\n\n`);
-				buffer = buffer.slice(end + 2);
-				end = buffer.indexOf('\n\n');
+				controller.enqueue(`${processBlock(state.buffer.slice(0, end), state)}\n\n`);
+				state.buffer = state.buffer.slice(end + 2);
+				end = state.buffer.indexOf('\n\n');
 			}
 		},
 		flush(controller) {
-			if (buffer) {
-				controller.enqueue(processBlock(buffer, state));
+			if (state.buffer) {
+				controller.enqueue(processBlock(state.buffer, state));
 			}
 		},
 	});
@@ -81,7 +86,7 @@ function processBlock(block: string, state: StreamState): string {
 		return block;
 	}
 
-	const raw = parseJson(dataLine.slice('data: '.length));
+	const raw = parseJsonOrUndefined(dataLine.slice('data: '.length));
 	const event = streamEventSchema.safeParse(raw).data;
 
 	if (!event) {
@@ -97,13 +102,14 @@ function processBlock(block: string, state: StreamState): string {
 		return block;
 	}
 
-	reportUsage(event.response.usage, state.options);
+	reportUsage(event.response.usage, state.onUsage);
 
 	if (event.response.output.length > 0) {
 		return block;
 	}
 
-	return block.replace(dataLine, `data: ${JSON.stringify(backfillOutput(raw, state.items))}`);
+	// a replacer function, so `$` sequences in model output are never treated as patterns
+	return block.replace(dataLine, () => `data: ${JSON.stringify(backfillOutput(raw, state.items))}`);
 }
 
 // the plan route streams each item through response.output_item.done but ends with an empty
@@ -123,22 +129,14 @@ function backfillOutput(raw: unknown, items: readonly unknown[]): unknown {
 	};
 }
 
-function reportUsage(usage: z.infer<typeof usageSchema> | undefined, options: ResponseStreamOptions): void {
+function reportUsage(usage: z.infer<typeof usageSchema> | undefined, onUsage: StreamState['onUsage']): void {
 	if (!usage) {
 		return;
 	}
 
-	options.onUsage({
+	onUsage({
 		inputTokens: usage.input_tokens,
 		cachedTokens: usage.input_tokens_details?.cached_tokens ?? 0,
 		outputTokens: usage.output_tokens,
 	});
-}
-
-function parseJson(json: string): unknown {
-	try {
-		return JSON.parse(json);
-	} catch {
-		return undefined;
-	}
 }

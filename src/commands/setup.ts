@@ -6,15 +6,12 @@ import { listPlanModels } from '../lib/chatgpt/models.ts';
 import { signIn } from '../lib/chatgpt/sign-in.ts';
 import { readCredentials } from '../lib/chatgpt/tokens.ts';
 import { paths } from '../lib/config/env.ts';
+import { isGrokEffort } from '../lib/grok/config.ts';
 import type { Launcher } from '../lib/launcher.ts';
 import { listApiModels } from '../lib/openai/models.ts';
 import { Provider, modelKey } from '../lib/providers.ts';
 import { readSetups, saveSetup } from '../lib/setups.ts';
 import type { Model } from '../lib/setups.ts';
-
-// efforts grok's responses backend can send. the catalog also lists ultra, which is not an api value:
-// codex sends max for it and adds its own client-side delegation.
-const GROK_EFFORTS = new Set(['none', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max']);
 
 export type SetupOptions = {
 	launcher: Launcher;
@@ -112,12 +109,8 @@ async function connectChatGpt(signal: AbortSignal): Promise<Model[] | undefined>
 	});
 	const planModels = await listPlanModels(token.access_token, signal);
 	const models = planModels.map(model => ({
-		slug: model.slug,
-		name: model.name,
-		description: model.description,
-		contextWindow: model.contextWindow,
-		efforts: model.efforts.filter(effort => GROK_EFFORTS.has(effort.id)),
-		defaultEffort: model.defaultEffort,
+		...model,
+		efforts: model.efforts.filter(effort => isGrokEffort(effort.id)),
 	}));
 
 	spinner.stop(`Found ${models.length} models`);

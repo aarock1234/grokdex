@@ -22,8 +22,10 @@ type Message = z.infer<typeof messageSchema>;
 
 type RequestId = NonNullable<Message['id']>;
 
-// serves the mcp handshake on stdio and resolves when grok closes stdin.
-export function serveMcp(version: string): Promise<void> {
+type Reply = { result: object } | { error: { code: number; message: string } };
+
+// serves the mcp handshake on stdio and resolves when grok closes stdin or the signal aborts.
+export function serveMcp(version: string, signal: AbortSignal): Promise<void> {
 	const closed = Promise.withResolvers<void>();
 	const lines = createInterface({ input: process.stdin });
 
@@ -38,10 +40,14 @@ export function serveMcp(version: string): Promise<void> {
 	});
 	lines.on('close', () => closed.resolve());
 
+	if (signal.aborted) {
+		lines.close();
+	} else {
+		signal.addEventListener('abort', () => lines.close(), { once: true });
+	}
+
 	return closed.promise;
 }
-
-type Reply = { result: object } | { error: { code: number; message: string } };
 
 function handle(message: Message, version: string): Reply {
 	if (message.method === 'initialize') {

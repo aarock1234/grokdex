@@ -8,9 +8,10 @@ import { setTimeout } from 'node:timers/promises';
 
 import type { Logger } from 'pino';
 
-import { API_BASE } from '../chatgpt/tokens.ts';
 import { errorMessage } from '../errors.ts';
 import { listen, readBody, sendJson } from '../http.ts';
+import { parseJsonOrUndefined } from '../json.ts';
+import { API_BASE } from '../openai/api.ts';
 import { ADAPTER_PORT } from './address.ts';
 import { adaptRequest, responsesRequestSchema } from './request.ts';
 import type { ResponsesRequest } from './request.ts';
@@ -77,7 +78,7 @@ export async function claimPort(server: Server, logger: Logger, signal: AbortSig
 }
 
 async function proxy(req: IncomingMessage, res: ServerResponse, options: AdapterOptions): Promise<void> {
-	const parsed = responsesRequestSchema.safeParse(parseJson(await readBody(req)));
+	const parsed = responsesRequestSchema.safeParse(parseJsonOrUndefined(await readBody(req)));
 
 	if (!parsed.success) {
 		sendJson(res, 400, { error: { message: 'request body is not a responses request' } });
@@ -184,14 +185,6 @@ function firstHeader(value: string | string[] | undefined): string | undefined {
 	const first = Array.isArray(value) ? value[0] : value;
 
 	return first === '' ? undefined : first;
-}
-
-function parseJson(text: string): unknown {
-	try {
-		return JSON.parse(text);
-	} catch {
-		return undefined;
-	}
 }
 
 function isPortInUse(error: unknown): boolean {
