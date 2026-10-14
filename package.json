@@ -1,0 +1,44 @@
+{
+  "name": "grokdex",
+  "version": "0.1.0",
+  "description": "Use your ChatGPT plan in Grok Build",
+  "keywords": [
+    "grok",
+    "grok-build",
+    "chatgpt",
+    "codex",
+    "openai",
+    "mcp"
+  ],
+  "license": "Elastic-2.0",
+  "author": "aarock1234",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/aarock1234/grokdex.git"
+  },
+  "type": "module",
+  "bin": {
+    "grokdex": "dist/cli.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "engines": {
+    "node": ">=24"
+  },
+  "packageManager": "pnpm@11.15.1",
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p .",
+    "test": "node --test \"test/**/*.test.ts\"",
+    "check": "pnpm typecheck && pnpm test",
+    "prepublishOnly": "pnpm check && pnpm build"
+  },
+  "dependencies": {
+    "@clack/prompts": "^1.8.1"
+  },
+  "devDependencies": {
+    "@types/node": "^24.19.2",
+    "typescript": "^7.0.2"
+  }
+}
