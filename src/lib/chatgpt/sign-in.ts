@@ -38,12 +38,16 @@ type PkcePair = {
 
 export type SignInOptions = {
 	onUrl: (url: string) => void;
+	// registers a new client so the user can pick another account; otherwise the saved account is
+	// reauthorized, whose id token hint makes openai skip account selection
+	isNewAccount?: boolean;
 	signal?: AbortSignal;
 };
 
 // runs the browser sign-in: registers this host on first use, reuses the saved client after that.
+// a successful sign-in to a new account replaces the saved one.
 export async function signIn(options: SignInOptions): Promise<Credentials> {
-	const existing = readCredentials();
+	const existing = options.isNewAccount ? undefined : readCredentials();
 	const hostId = readHostId();
 	const state = randomToken();
 	const nonce = randomToken();

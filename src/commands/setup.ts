@@ -57,7 +57,7 @@ export async function setup(options: SetupOptions): Promise<void> {
 		return;
 	}
 
-	saveSetup(
+	const skippedModels = saveSetup(
 		{
 			provider,
 			models,
@@ -66,7 +66,22 @@ export async function setup(options: SetupOptions): Promise<void> {
 	);
 
 	prompt.log.success(`Updated ${paths.grokConfig}`);
-	prompt.outro(`Start Grok with: grok -m ${modelKey(provider, models[0]?.slug ?? '')}`);
+
+	if (skippedModels.length > 0) {
+		prompt.log.warn(
+			`Left out ${skippedModels.join(', ')}: your Grok config already defines a model with that name.`
+		);
+	}
+
+	const added = models.map(model => modelKey(provider, model.slug)).filter(key => !skippedModels.includes(key));
+	const [firstAdded] = added;
+
+	if (firstAdded === undefined) {
+		prompt.outro('No models were added.');
+		return;
+	}
+
+	prompt.outro(`Start Grok with: grok -m ${firstAdded}`);
 }
 
 function connect(provider: Provider, signal: AbortSignal): Promise<Model[] | undefined> {
@@ -86,17 +101,35 @@ async function connectChatGpt(signal: AbortSignal): Promise<Model[] | undefined>
 	const existing = readCredentials();
 
 	if (existing) {
-		const shouldReuse = await prompt.confirm({ message: `Use ${existing.email || 'your saved account'}?` });
+		const choice = await prompt.select({
+			message: 'Which ChatGPT account?',
+			options: [
+				{
+					value: 'saved',
+					label: `Keep using ${existing.email || 'your saved account'}`,
+				},
+				{
+					value: 'new',
+					label: 'Sign in with a different account',
+				},
+			],
+		});
 
-		if (prompt.isCancel(shouldReuse)) {
+		if (prompt.isCancel(choice)) {
 			return undefined;
 		}
 
-		if (!shouldReuse) {
-			await signInWithSpinner(signal);
+		if (choice === 'new') {
+			await signInWithSpinner({
+				isNewAccount: true,
+				signal,
+			});
 		}
 	} else {
-		await signInWithSpinner(signal);
+		await signInWithSpinner({
+			isNewAccount: false,
+			signal,
+		});
 	}
 
 	const spinner = prompt.spinner();
@@ -118,14 +151,20 @@ async function connectChatGpt(signal: AbortSignal): Promise<Model[] | undefined>
 	return models;
 }
 
-async function signInWithSpinner(signal: AbortSignal): Promise<void> {
+type SignInWithSpinnerOptions = {
+	isNewAccount: boolean;
+	signal: AbortSignal;
+};
+
+async function signInWithSpinner(options: SignInWithSpinnerOptions): Promise<void> {
 	const spinner = prompt.spinner();
 	const credentials = await signIn({
 		onUrl: url => {
 			prompt.log.info(`Your browser should open. If it doesn't, visit:\n${url}`);
 			spinner.start('Waiting for you to sign in');
 		},
-		signal,
+		isNewAccount: options.isNewAccount,
+		signal: options.signal,
 	});
 
 	spinner.stop(`Signed in as ${credentials.email}`);

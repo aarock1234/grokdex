@@ -1,4 +1,4 @@
-import { claimPort, createAdapter } from '../lib/adapter/server.ts';
+import { claimPort, createAdapter, releasePort } from '../lib/adapter/server.ts';
 import { env } from '../lib/config/env.ts';
 import { createFileLogger } from '../lib/log.ts';
 import { serveMcp } from '../lib/mcp/server.ts';
@@ -18,9 +18,8 @@ export async function mcp(version: string, signal: AbortSignal): Promise<void> {
 		await serveMcp(version, signal);
 	} finally {
 		stop.abort();
-		server.closeAllConnections();
-		server.close();
 		await claiming;
+		await releasePort(server, logger);
 		logger.info('session ended');
 		logger.flush();
 	}

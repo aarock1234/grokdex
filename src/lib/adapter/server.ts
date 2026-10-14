@@ -22,6 +22,8 @@ const SERVICE = 'grokdex';
 const TAKEOVER_POLL_MS = 1_000;
 // each retry drops at least one rejected reasoning item; bound it in case openai keeps rejecting
 const MAX_REASONING_RETRIES = 8;
+// how long a closing session keeps streaming responses that other grok sessions started on it
+const DRAIN_TIMEOUT_MS = 10 * 60 * 1000;
 
 export type AdapterOptions = {
 	logger: Logger;
@@ -62,6 +64,29 @@ export function createAdapter(options: AdapterOptions): Server {
 
 		sendJson(res, 404, { error: { message: `unsupported route ${req.method ?? ''} ${path}` } });
 	});
+}
+
+// gives the port up when this session ends. listening stops at once so a standby session takes over
+// for new requests, while responses already streaming to other sessions finish, within a bound.
+// grok may still kill this process outright, which no adapter can prevent.
+export async function releasePort(server: Server, logger: Logger): Promise<void> {
+	if (!server.listening) {
+		return;
+	}
+
+	const drained = new Promise<void>(resolve => server.close(() => resolve()));
+	const deadline = new AbortController();
+	const timedOut = setTimeout(DRAIN_TIMEOUT_MS, undefined, { signal: deadline.signal }).catch(() => undefined);
+
+	logger.info('stopped listening, finishing open responses');
+	server.closeIdleConnections();
+
+	try {
+		await Promise.race([drained, timedOut]);
+	} finally {
+		deadline.abort();
+		server.closeAllConnections();
+	}
 }
 
 // each grok session hosts its own adapter. the first one serves the port; the rest stand by

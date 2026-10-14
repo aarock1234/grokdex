@@ -38,12 +38,22 @@ export function readSetups(): Setup[] {
 	return readStored(SETUPS_FILE, z.array(setupSchema)) ?? [];
 }
 
-// saves one provider's setup, replacing any earlier one, and rewrites grok's config to match.
-export function saveSetup(setup: Setup, launcher: Launcher): void {
+// saves one provider's setup, replacing any earlier one, and rewrites grok's config to match. returns
+// the model keys left out because the user's grok config already defines them.
+export function saveSetup(setup: Setup, launcher: Launcher): string[] {
 	const setups = [...readSetups().filter(saved => saved.provider !== setup.provider), setup];
+	let skippedModels: string[] = [];
 
 	writeStored(SETUPS_FILE, setups);
-	updateGrokConfig(config => withGrokdexEntries(config, setups, launcher));
+	updateGrokConfig(config => {
+		const entries = withGrokdexEntries(config, setups, launcher);
+
+		skippedModels = entries.skippedModels;
+
+		return entries.config;
+	});
+
+	return skippedModels;
 }
 
 // removes every setup and grokdex's entries from grok's config; reports whether the config changed.

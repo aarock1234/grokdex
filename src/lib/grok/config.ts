@@ -31,18 +31,30 @@ export function isGrokEffort(id: string): boolean {
 }
 
 // replaces every grokdex entry with the ones these setups need; everything else is kept as is.
-export function withGrokdexEntries(config: TomlTable, setups: readonly Setup[], launcher: Launcher): TomlTable {
+export type GrokdexEntries = {
+	config: TomlTable;
+	// models left out because the user's own config already defines a model under that key
+	skippedModels: string[];
+};
+
+// replaces every grokdex entry with the ones these setups need; everything else is kept as is, and a
+// model the user already defines under the same key is never overwritten.
+export function withGrokdexEntries(config: TomlTable, setups: readonly Setup[], launcher: Launcher): GrokdexEntries {
 	const next = withoutGrokdexEntries(config);
+	const skippedModels: string[] = [];
 
 	if (setups.some(setup => PROVIDERS[setup.provider].isAdapterNeeded)) {
 		addEntry(next, 'mcp_servers', OWNED_PREFIX, commandEntry(launcher, ['mcp']));
 	}
 
 	for (const setup of setups) {
-		addSetup(next, setup, launcher);
+		skippedModels.push(...addSetup(next, setup, launcher));
 	}
 
-	return next;
+	return {
+		config: next,
+		skippedModels,
+	};
 }
 
 export function withoutGrokdexEntries(config: TomlTable): TomlTable {
@@ -84,7 +96,8 @@ function ownedModelKeys(config: TomlTable): string[] {
 		.map(([key]) => key);
 }
 
-function addSetup(config: TomlTable, setup: Setup, launcher: Launcher): void {
+// adds a provider's entries and returns the model keys it skipped because the user already uses them.
+function addSetup(config: TomlTable, setup: Setup, launcher: Launcher): string[] {
 	const info = PROVIDERS[setup.provider];
 	const providerName = `${OWNED_PREFIX}-${setup.provider}`;
 
@@ -98,9 +111,27 @@ function addSetup(config: TomlTable, setup: Setup, launcher: Launcher): void {
 		auth_provider: providerName,
 	});
 
+	const skippedModels: string[] = [];
+
 	for (const model of setup.models) {
-		addEntry(config, 'model', modelKey(setup.provider, model.slug), modelEntry(setup, model, providerName));
+		const key = modelKey(setup.provider, model.slug);
+
+		// config has no grokdex entries left at this point, so anything under this key is the user's
+		if (hasModel(config, key)) {
+			skippedModels.push(key);
+			continue;
+		}
+
+		addEntry(config, 'model', key, modelEntry(setup, model, providerName));
 	}
+
+	return skippedModels;
+}
+
+function hasModel(config: TomlTable, key: string): boolean {
+	const models = config.model;
+
+	return isTable(models) && Object.hasOwn(models, key);
 }
 
 // names stay plain in grok's picker and status line; the provider goes in the description column.
