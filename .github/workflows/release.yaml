@@ -23,8 +23,11 @@ jobs:
                   cache: pnpm
                   registry-url: https://registry.npmjs.org
             - run: pnpm install --frozen-lockfile
-            # npm, not pnpm: npm reads the trusted publishing oidc token and adds provenance itself
-            - run: npm publish
+            # the npm bundled with node may predate staged publishing
+            - run: npm install --global npm@latest
+            # stages the release for approval on npmjs.com; npm, not pnpm, because npm reads the
+            # trusted publishing oidc token and adds provenance itself
+            - run: npm stage publish .
             - uses: softprops/action-gh-release@v2
               with:
                   generate_release_notes: true
