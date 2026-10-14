@@ -1,10 +1,10 @@
 import { z } from 'zod';
 
-// fields the plan route rejects, per openai's preview limitations.
+// fields the plan route rejects with 400 unsupported parameter. openai's preview limitations page
+// also lists max_output_tokens, but the route accepts it, so it passes through.
 const UNSUPPORTED_FIELDS = [
 	'background',
 	'conversation',
-	'max_output_tokens',
 	'max_tool_calls',
 	'metadata',
 	'moderation',
