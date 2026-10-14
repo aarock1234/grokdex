@@ -12,7 +12,8 @@ import { Provider, modelKey } from '../lib/providers.ts';
 import { readSetups, saveSetup } from '../lib/setups.ts';
 import type { Model } from '../lib/setups.ts';
 
-// efforts grok's responses backend can send
+// efforts grok's responses backend can send. the catalog also lists ultra, which is not an api value:
+// codex sends max for it and adds its own client-side delegation.
 const GROK_EFFORTS = new Set(['none', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max']);
 
 export type SetupOptions = {
@@ -115,7 +116,7 @@ async function connectChatGpt(signal: AbortSignal): Promise<Model[] | undefined>
 		name: model.name,
 		description: model.description,
 		contextWindow: model.contextWindow,
-		efforts: model.efforts.filter(effort => GROK_EFFORTS.has(effort)),
+		efforts: model.efforts.filter(effort => GROK_EFFORTS.has(effort.id)),
 		defaultEffort: model.defaultEffort,
 	}));
 

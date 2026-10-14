@@ -13,7 +13,8 @@ import { errorMessage } from '../errors.ts';
 import { listen, readBody, sendJson } from '../http.ts';
 import { ADAPTER_PORT } from './address.ts';
 import { adaptRequest, responsesRequestSchema } from './request.ts';
-import { backfillTerminalOutput } from './stream.ts';
+import type { ResponsesRequest } from './request.ts';
+import { responseStream } from './stream.ts';
 
 const SERVICE = 'grokdex';
 const TAKEOVER_POLL_MS = 1_000;
@@ -84,7 +85,10 @@ async function proxy(req: IncomingMessage, res: ServerResponse, options: Adapter
 	}
 
 	const request = adaptRequest(parsed.data, options.sideModel);
-	const log = options.logger.child({ model: request.model });
+	const log = options.logger.child({
+		model: request.model,
+		session: request.prompt_cache_key,
+	});
 	const cancel = new AbortController();
 
 	res.on('close', () => cancel.abort());
@@ -95,11 +99,7 @@ async function proxy(req: IncomingMessage, res: ServerResponse, options: Adapter
 		upstream = await fetch(`${API_BASE}/responses`, {
 			method: 'POST',
 			// only what the api needs; grok's x-grok-* session headers stay local
-			headers: {
-				authorization: req.headers.authorization ?? '',
-				'content-type': 'application/json',
-				accept: 'text/event-stream',
-			},
+			headers: upstreamHeaders(req, request),
 			body: JSON.stringify(request),
 			signal: cancel.signal,
 		});
@@ -127,11 +127,11 @@ async function proxy(req: IncomingMessage, res: ServerResponse, options: Adapter
 		);
 	});
 
-	relay(upstream, res);
+	relay(upstream, res, log);
 }
 
 // the route can omit content-type; with stream forced on, a successful body is always sse.
-function relay(upstream: Response, res: ServerResponse): void {
+function relay(upstream: Response, res: ServerResponse, log: Logger): void {
 	const contentType = upstream.headers.get('content-type');
 	const isEventStream = upstream.ok && (contentType ?? 'text/event-stream').startsWith('text/event-stream');
 	const headers: Record<string, string> = {
@@ -153,13 +153,37 @@ function relay(upstream: Response, res: ServerResponse): void {
 	const body = isEventStream
 		? upstream.body
 				.pipeThrough(new TextDecoderStream())
-				.pipeThrough(backfillTerminalOutput())
+				.pipeThrough(responseStream({ onUsage: usage => log.info(usage, 'usage') }))
 				.pipeThrough(new TextEncoderStream())
 		: upstream.body;
 
 	Readable.fromWeb(body)
 		.on('error', () => res.destroy())
 		.pipe(res);
+}
+
+// the plan route only reuses its prompt cache when requests carry a session-id header; without it
+// every turn pays for the whole history. grok's prompt_cache_key is its stable session id, so a
+// resumed session hits the same cache. grok's other x-grok-* headers stay local.
+function upstreamHeaders(req: IncomingMessage, request: ResponsesRequest): Record<string, string> {
+	const headers: Record<string, string> = {
+		authorization: req.headers.authorization ?? '',
+		'content-type': 'application/json',
+		accept: 'text/event-stream',
+	};
+	const sessionId = request.prompt_cache_key ?? firstHeader(req.headers['x-grok-session-id']);
+
+	if (sessionId) {
+		headers['session-id'] = sessionId;
+	}
+
+	return headers;
+}
+
+function firstHeader(value: string | string[] | undefined): string | undefined {
+	const first = Array.isArray(value) ? value[0] : value;
+
+	return first === '' ? undefined : first;
 }
 
 function parseJson(text: string): unknown {

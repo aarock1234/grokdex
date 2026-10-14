@@ -12,7 +12,12 @@ const modelSchema = z.object({
 	name: z.string(),
 	description: z.string().optional(),
 	contextWindow: z.number().int().positive().optional(),
-	efforts: z.array(z.string()),
+	efforts: z.array(
+		z.object({
+			id: z.string(),
+			description: z.string().optional(),
+		})
+	),
 	defaultEffort: z.string().optional(),
 });
 

@@ -16,6 +16,7 @@ const catalogSchema = z.object({
 				.array(
 					z.object({
 						effort: z.string(),
+						description: z.string().optional(),
 					})
 				)
 				.default([]),
@@ -23,12 +24,17 @@ const catalogSchema = z.object({
 	),
 });
 
+export type PlanEffort = {
+	id: string;
+	description: string | undefined;
+};
+
 export type PlanModel = {
 	slug: string;
 	name: string;
 	description: string | undefined;
 	contextWindow: number | undefined;
-	efforts: string[];
+	efforts: PlanEffort[];
 	defaultEffort: string | undefined;
 };
 
@@ -48,7 +54,10 @@ export async function listPlanModels(token: string, signal?: AbortSignal): Promi
 			name: model.display_name ?? model.slug,
 			description: model.description,
 			contextWindow: model.context_window,
-			efforts: model.supported_reasoning_levels.map(level => level.effort),
+			efforts: model.supported_reasoning_levels.map(level => ({
+				id: level.effort,
+				description: level.description,
+			})),
 			defaultEffort: model.default_reasoning_level,
 		}));
 }

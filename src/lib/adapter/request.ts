@@ -28,6 +28,7 @@ const inputItemSchema = z.looseObject({
 export const responsesRequestSchema = z.looseObject({
 	model: z.string(),
 	input: z.union([z.string(), z.array(inputItemSchema)]).optional(),
+	prompt_cache_key: z.string().optional(),
 });
 
 export type ResponsesRequest = z.infer<typeof responsesRequestSchema>;

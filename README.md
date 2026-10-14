@@ -57,10 +57,14 @@ The ChatGPT plan route differs from the regular API in a few ways Grok doesn't h
 `127.0.0.1:18456` while Grok is open and fixes them:
 
 - Grok sends `system` messages. The adapter sends them as `developer`.
-- Grok's title and recap calls name Grok models. The adapter sends them to `gpt-6-luna`.
+- Grok's title and recap calls name Grok models and set `temperature`. The adapter sends them to `gpt-6-luna`
+  and drops the fields the route rejects.
 - The route ends each stream with an empty `output`, which Grok reads as no answer. The adapter fills it in.
+- The route only reuses its prompt cache when a request carries a `session-id` header. The adapter sends Grok's
+  session id, so after the first few turns about 99% of each request is cached, including after `grok -c`.
 
-The adapter never stores your credentials. Grok's token passes straight through. Credentials live in
+The adapter never stores your credentials. Grok's token passes straight through. It logs one line per request,
+with token counts but no content, to `adapter.log` next to your credentials. Credentials live in
 `%LOCALAPPDATA%\grokdex` on Windows and `~/.config/grokdex` elsewhere, readable only by you.
 
 ## Configuration
@@ -76,8 +80,13 @@ Grok's next-prompt suggestions use Grok's own model. To use GPT for those too, a
 
 ## Limits
 
-OpenAI's plan route is in preview. It has no hosted tools such as image generation or file search, and requests
-fail with `subscription_sharing_usage_limit_exceeded` once your plan's limit is reached.
+OpenAI's plan route is in preview:
+
+- No hosted tools such as image generation or file search.
+- No fast mode. The route accepts `service_tier: "priority"` but serves it at the default tier.
+- No ultra reasoning. Codex's ultra is `max` effort plus client-side delegation, which Grok covers with `max` and
+  its own subagents.
+- Requests fail with `subscription_sharing_usage_limit_exceeded` once your plan's limit is reached.
 
 ## Development
 

@@ -106,10 +106,32 @@ function renderModel(setup: Setup, model: Model, providerName: string): string[]
 	return lines;
 }
 
-function renderEffort(effort: string, model: Model): string {
-	const isDefault = effort === model.defaultEffort;
+const EFFORT_LABELS: Readonly<Record<string, string>> = {
+	none: 'None',
+	minimal: 'Minimal',
+	low: 'Low',
+	medium: 'Medium',
+	high: 'High',
+	xhigh: 'Extra high',
+	max: 'Max',
+};
 
-	return `{ id = ${toml(effort)}, value = ${toml(effort)}${isDefault ? ', default = true' : ''} }`;
+function renderEffort(effort: Model['efforts'][number], model: Model): string {
+	const fields = [
+		`id = ${toml(effort.id)}`,
+		`value = ${toml(effort.id)}`,
+		`label = ${toml(EFFORT_LABELS[effort.id] ?? effort.id)}`,
+	];
+
+	if (effort.description) {
+		fields.push(`description = ${toml(effort.description)}`);
+	}
+
+	if (effort.id === model.defaultEffort) {
+		fields.push('default = true');
+	}
+
+	return `{ ${fields.join(', ')} }`;
 }
 
 function renderCommand(launcher: Launcher, args: readonly string[]): string[] {
