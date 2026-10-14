@@ -15,18 +15,18 @@ jobs:
             contents: write
             id-token: write # npm trusted publishing and provenance
         steps:
-            - uses: actions/checkout@v5
-            - uses: pnpm/action-setup@v4
-            - uses: actions/setup-node@v6
+            - uses: actions/checkout@v7
+            - uses: pnpm/action-setup@v6
+            - uses: actions/setup-node@v7
               with:
                   node-version: 24
-                  cache: pnpm
+                  # no dependency cache in the job that publishes, so a poisoned cache cannot reach a release
                   registry-url: https://registry.npmjs.org
             - run: pnpm install --frozen-lockfile
             # trusted publishing needs a newer npm than some node releases bundle
             - run: npm install --global npm@latest
             # npm, not pnpm: npm reads the trusted publishing oidc token and adds provenance itself
             - run: npm publish
-            - uses: softprops/action-gh-release@v2
+            - uses: softprops/action-gh-release@v3
               with:
                   generate_release_notes: true
