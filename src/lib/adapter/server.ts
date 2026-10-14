@@ -13,24 +13,36 @@ import { listen, readBody, sendJson } from '../http.ts';
 import { parseJsonOrUndefined } from '../json.ts';
 import { API_BASE } from '../openai/api.ts';
 import { ADAPTER_PORT } from './address.ts';
+import { RejectedReasoning, Rejection, withoutAllReasoning } from './reasoning.ts';
 import { adaptRequest, responsesRequestSchema } from './request.ts';
 import type { ResponsesRequest } from './request.ts';
 import { responseStream } from './stream.ts';
 
 const SERVICE = 'grokdex';
 const TAKEOVER_POLL_MS = 1_000;
+// each retry drops at least one rejected reasoning item; bound it in case openai keeps rejecting
+const MAX_REASONING_RETRIES = 8;
 
 export type AdapterOptions = {
 	logger: Logger;
 	sideModel: string;
 };
 
+type ProxyContext = AdapterOptions & {
+	rejectedReasoning: RejectedReasoning;
+};
+
 export function createAdapter(options: AdapterOptions): Server {
+	const context: ProxyContext = {
+		...options,
+		rejectedReasoning: new RejectedReasoning(),
+	};
+
 	return createServer((req, res) => {
 		const path = new URL(req.url ?? '/', 'http://127.0.0.1').pathname;
 
 		if (req.method === 'POST' && path === '/v1/responses') {
-			proxy(req, res, options).catch((error: unknown) => {
+			proxy(req, res, context).catch((error: unknown) => {
 				options.logger.error({ err: error }, 'proxy failed');
 
 				if (res.headersSent) {
@@ -77,7 +89,7 @@ export async function claimPort(server: Server, logger: Logger, signal: AbortSig
 	}
 }
 
-async function proxy(req: IncomingMessage, res: ServerResponse, options: AdapterOptions): Promise<void> {
+async function proxy(req: IncomingMessage, res: ServerResponse, context: ProxyContext): Promise<void> {
 	const parsed = responsesRequestSchema.safeParse(parseJsonOrUndefined(await readBody(req)));
 
 	if (!parsed.success) {
@@ -85,8 +97,8 @@ async function proxy(req: IncomingMessage, res: ServerResponse, options: Adapter
 		return;
 	}
 
-	const request = adaptRequest(parsed.data, options.sideModel);
-	const log = options.logger.child({
+	const request = context.rejectedReasoning.strip(adaptRequest(parsed.data, context.sideModel));
+	const log = context.logger.child({
 		model: request.model,
 		session: request.prompt_cache_key,
 	});
@@ -97,13 +109,7 @@ async function proxy(req: IncomingMessage, res: ServerResponse, options: Adapter
 	let upstream: Response;
 
 	try {
-		upstream = await fetch(`${API_BASE}/responses`, {
-			method: 'POST',
-			// only what the api needs; grok's x-grok-* session headers stay local
-			headers: upstreamHeaders(req, request),
-			body: JSON.stringify(request),
-			signal: cancel.signal,
-		});
+		upstream = await sendUpstream(req, request, context, cancel.signal, log);
 	} catch (error) {
 		if (cancel.signal.aborted) {
 			log.info('cancelled before upstream answered');
@@ -129,6 +135,51 @@ async function proxy(req: IncomingMessage, res: ServerResponse, options: Adapter
 	});
 
 	relay(upstream, res, log);
+}
+
+// sends the request, retrying without reasoning items openai rejects as another provider's. nothing
+// has reached grok yet when a 400 arrives, so a retry is invisible to it.
+async function sendUpstream(
+	req: IncomingMessage,
+	initialRequest: ResponsesRequest,
+	context: ProxyContext,
+	signal: AbortSignal,
+	log: Logger
+): Promise<Response> {
+	let request = initialRequest;
+
+	for (let attempt = 0; ; attempt += 1) {
+		const response = await fetch(`${API_BASE}/responses`, {
+			method: 'POST',
+			// only what the api needs; grok's x-grok-* session headers stay local
+			headers: upstreamHeaders(req, request),
+			body: JSON.stringify(request),
+			signal,
+		});
+
+		if (response.status !== 400 || attempt === MAX_REASONING_RETRIES) {
+			return response;
+		}
+
+		const body = await response.text();
+		const rejection = context.rejectedReasoning.learnFrom(body);
+
+		if (!rejection) {
+			return replayable(response, body);
+		}
+
+		log.info({ rejection }, 'dropping reasoning another provider encrypted');
+		request =
+			rejection === Rejection.ITEM ? context.rejectedReasoning.strip(request) : withoutAllReasoning(request);
+	}
+}
+
+// rebuilds a response whose body was already read, so it can be relayed like any other.
+function replayable(response: Response, body: string): Response {
+	return new Response(body, {
+		status: response.status,
+		headers: response.headers,
+	});
 }
 
 // the route can omit content-type; with stream forced on, a successful body is always sse.

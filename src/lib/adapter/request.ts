@@ -21,6 +21,8 @@ const UNSUPPORTED_FIELDS = [
 ] as const;
 
 const inputItemSchema = z.looseObject({
+	type: z.string().optional(),
+	id: z.string().optional(),
 	role: z.string().optional(),
 });
 
