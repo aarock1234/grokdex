@@ -322,6 +322,8 @@ function streamReply(res: ServerResponse, model: string, reply: Reply): void {
 
 	res.writeHead(200);
 	send({ type: 'response.created', response: { ...response, status: 'in_progress' } });
+	// the plan route sends these while the model thinks; they are not standard responses events
+	send({ type: 'keepalive' });
 	send({ type: 'response.output_item.added', output_index: 0, item: { ...item, status: 'in_progress' } });
 
 	for (const event of deltaEvents(reply)) {

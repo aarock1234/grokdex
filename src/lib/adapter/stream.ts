@@ -49,6 +49,11 @@ type StreamState = {
 
 const TERMINAL_EVENTS = new Set(['response.completed', 'response.incomplete']);
 
+// every event type grok parses is a standard responses event or `error`
+function isGrokEvent(type: string): boolean {
+	return type.startsWith('response.') || type === 'error';
+}
+
 // passes the plan route's sse stream through to grok, fixing its terminal output and reporting usage.
 export function responseStream(options: ResponseStreamOptions): TransformStream<string, string> {
 	const state: StreamState = {
@@ -91,6 +96,13 @@ function processBlock(block: string, state: StreamState): string {
 
 	if (!event) {
 		return block;
+	}
+
+	// grok rejects the whole response on an event type it does not know, such as the plan route's
+	// keepalive. an sse comment keeps the connection busy, which is the keepalive's job, and every
+	// sse reader ignores it.
+	if (!isGrokEvent(event.type)) {
+		return `: ${event.type}`;
 	}
 
 	if (event.type === 'response.output_item.done' && event.output_index !== undefined) {
