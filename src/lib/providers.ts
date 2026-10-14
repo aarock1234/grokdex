@@ -10,6 +10,8 @@ export type Provider = (typeof Provider)[keyof typeof Provider];
 
 export type ProviderInfo = {
 	label: string;
+	// appended to each model's description in grok's picker, so names stay plain
+	billingNote: string;
 	baseUrl: string;
 	// grok model keys; plan models keep their plain slug, others get a prefix so they never clash.
 	modelKeyPrefix: string;
@@ -21,6 +23,7 @@ export type ProviderInfo = {
 export const PROVIDERS: Readonly<Record<Provider, ProviderInfo>> = {
 	[Provider.CHATGPT]: {
 		label: 'ChatGPT',
+		billingNote: 'Uses your ChatGPT plan.',
 		baseUrl: ADAPTER_BASE_URL,
 		modelKeyPrefix: '',
 		tokenTtlSeconds: 3600,
@@ -28,6 +31,7 @@ export const PROVIDERS: Readonly<Record<Provider, ProviderInfo>> = {
 	},
 	[Provider.OPENAI]: {
 		label: 'OpenAI API',
+		billingNote: 'Billed to your OpenAI API key.',
 		baseUrl: API_BASE,
 		modelKeyPrefix: 'openai/',
 		tokenTtlSeconds: undefined,

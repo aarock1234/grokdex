@@ -44,7 +44,8 @@ To update, run `pnpm dlx grokdex@latest setup` again.
 
 ## How it works
 
-Setup writes one marked block to Grok's config and leaves the rest alone:
+Setup adds these entries to Grok's config and leaves everything else alone. Running it again replaces them, and
+`grokdex remove` takes them out:
 
 ```toml
 [auth_provider.grokdex-chatgpt]   # Grok runs this for a token; grokdex refreshes it
@@ -52,6 +53,10 @@ Setup writes one marked block to Grok's config and leaves the rest alone:
 [model_providers.grokdex-chatgpt] # points the models at the adapter
 [model."gpt-6.1-sol"]             # one table per model you picked
 ```
+
+Each model gets its settings from OpenAI's catalog: its reasoning levels, image input, and the full context window
+the plan allows. OpenAI's smaller default window stays available with `/model gpt-6.1-sol 500k`. Grok compacts at
+90% of the window, like Codex.
 
 The ChatGPT plan route differs from the regular API in a few ways Grok doesn't handle yet. The adapter runs on
 `127.0.0.1:18456` while Grok is open and fixes them:

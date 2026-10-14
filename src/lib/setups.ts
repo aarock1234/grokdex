@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
-import { removeBlock, renderBlock, updateGrokConfig, upsertBlock } from './grok/config.ts';
+import { withGrokdexEntries, withGrokdexRemoved } from './grok/config.ts';
+import { updateGrokConfig } from './grok/config-file.ts';
 import type { Launcher } from './launcher.ts';
 import { Provider } from './providers.ts';
 import { readStored, removeStored, writeStored } from './store.ts';
@@ -12,6 +13,9 @@ const modelSchema = z.object({
 	name: z.string(),
 	description: z.string().optional(),
 	contextWindow: z.number().int().positive().optional(),
+	// optional so setups saved by 0.1.0 still load
+	contextWindowChoices: z.array(z.number().int().positive()).optional(),
+	hasVision: z.boolean().optional(),
 	efforts: z.array(
 		z.object({
 			id: z.string(),
@@ -39,12 +43,12 @@ export function saveSetup(setup: Setup, launcher: Launcher): void {
 	const setups = [...readSetups().filter(saved => saved.provider !== setup.provider), setup];
 
 	writeStored(SETUPS_FILE, setups);
-	updateGrokConfig(config => upsertBlock(config, renderBlock(setups, launcher)));
+	updateGrokConfig(config => withGrokdexEntries(config, setups, launcher));
 }
 
-// removes every setup and grokdex's block from grok's config; reports whether the config changed.
+// removes every setup and grokdex's entries from grok's config; reports whether the config changed.
 export function clearSetups(): boolean {
 	removeStored(SETUPS_FILE);
 
-	return updateGrokConfig(removeBlock);
+	return updateGrokConfig(withGrokdexRemoved);
 }

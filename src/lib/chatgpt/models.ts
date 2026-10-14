@@ -10,6 +10,8 @@ const catalogSchema = z.object({
 			display_name: z.string().optional(),
 			description: z.string().optional(),
 			context_window: z.number().optional(),
+			max_context_window: z.number().optional(),
+			input_modalities: z.array(z.string()).default([]),
 			visibility: z.string().optional(),
 			default_reasoning_level: z.string().optional(),
 			supported_reasoning_levels: z
@@ -34,9 +36,13 @@ export type PlanModel = {
 	name: string;
 	description: string | undefined;
 	contextWindow: number | undefined;
+	contextWindowChoices: number[];
+	hasVision: boolean;
 	efforts: PlanEffort[];
 	defaultEffort: string | undefined;
 };
+
+type CatalogModel = z.infer<typeof catalogSchema>['models'][number];
 
 // lists the models the signed-in plan offers; hidden catalog entries are skipped.
 export async function listPlanModels(token: string, signal?: AbortSignal): Promise<PlanModel[]> {
@@ -47,17 +53,29 @@ export async function listPlanModels(token: string, signal?: AbortSignal): Promi
 		signal,
 	});
 
-	return models
-		.filter(model => model.visibility === 'list')
-		.map(model => ({
-			slug: model.slug,
-			name: model.display_name ?? model.slug,
-			description: model.description,
-			contextWindow: model.context_window,
-			efforts: model.supported_reasoning_levels.map(level => ({
-				id: level.effort,
-				description: level.description,
-			})),
-			defaultEffort: model.default_reasoning_level,
-		}));
+	return models.filter(model => model.visibility === 'list').map(toPlanModel);
+}
+
+function toPlanModel(model: CatalogModel): PlanModel {
+	return {
+		slug: model.slug,
+		name: model.display_name ?? model.slug,
+		description: model.description,
+		contextWindow: model.max_context_window ?? model.context_window,
+		contextWindowChoices: contextWindowChoices(model),
+		hasVision: model.input_modalities.includes('image'),
+		efforts: model.supported_reasoning_levels.map(level => ({
+			id: level.effort,
+			description: level.description,
+		})),
+		defaultEffort: model.default_reasoning_level,
+	};
+}
+
+// context_window is openai's conservative default and max_context_window the ceiling codex lets
+// users raise it to. grok defaults to the ceiling and keeps the lighter default as a choice.
+function contextWindowChoices(model: CatalogModel): number[] {
+	const windows = [model.context_window, model.max_context_window].filter(window => window !== undefined);
+
+	return [...new Set(windows)].sort((a, b) => a - b);
 }
