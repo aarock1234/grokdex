@@ -76,11 +76,13 @@ with token counts but no content, to `adapter.log` next to your credentials. Cre
 
 ## Configuration
 
-| Variable             | Default      | Description                        |
-| -------------------- | ------------ | ---------------------------------- |
-| `GROKDEX_SIDE_MODEL` | `gpt-6-luna` | Model for Grok's titles and recaps |
-| `GROKDEX_HOME`       | see above    | Where credentials are stored       |
-| `GROK_HOME`          | `~/.grok`    | Grok's config directory            |
+| Variable                  | Default                     | Description                                    |
+| ------------------------- | --------------------------- | ---------------------------------------------- |
+| `GROKDEX_SIDE_MODEL`      | `gpt-6-luna`                | Model for Grok's titles and recaps             |
+| `GROKDEX_HOME`            | see above                   | Where credentials are stored                   |
+| `GROKDEX_OPENAI_BASE_URL` | `https://api.openai.com/v1` | Where requests go, for a proxy                 |
+| `GROKDEX_ADAPTER_PORT`    | `18456`                     | The adapter's port; rerun setup after a change |
+| `GROK_HOME`               | `~/.grok`                   | Grok's config directory                        |
 
 Grok's next-prompt suggestions use Grok's own model. To use GPT for those too, add
 `prompt_suggestion = "gpt-6-luna"` under `[models]` in your Grok config.
@@ -97,11 +99,14 @@ OpenAI's plan route is in preview:
 
 ## Development
 
-| Command                  | Description                          |
-| ------------------------ | ------------------------------------ |
-| `pnpm check`             | Typecheck, lint and check formatting |
-| `pnpm build`             | Compile to `dist`                    |
-| `node src/main.ts setup` | Run setup from source                |
+| Command                  | Description                                                    |
+| ------------------------ | -------------------------------------------------------------- |
+| `pnpm check`             | Typecheck, lint and check formatting                           |
+| `pnpm build`             | Compile to `dist`                                              |
+| `pnpm test`              | Run the installed `grok` against grokdex and a fake plan route |
+| `node src/main.ts setup` | Run setup from source                                          |
+
+The tests need the Grok CLI and no logins. CI runs them nightly against the newest Grok on Linux, macOS and Windows.
 
 ## License
 
