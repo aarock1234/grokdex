@@ -53,7 +53,7 @@ describe('grokdex with the latest grok cli', () => {
 		}
 	});
 
-	it('completes a conversation through the adapter in a single request', async () => {
+	it('completes in a single request despite keepalive, metadata, and unknown response events', async () => {
 		const result = await ask('Say hello.');
 
 		expect(result.exitCode, result.output).toBe(0);
